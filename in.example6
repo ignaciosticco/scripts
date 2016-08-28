@@ -1,0 +1,50 @@
+# Pedestrians in a 2D box
+
+#  intial conditions
+
+dimension        2
+boundary         f f p
+
+units            si
+atom_style       sphere
+
+lattice          sq 1.3 origin 0.5 0.5 0.0
+region           zona1 block 0 20 0 20 -1 1 units box
+region           zona2 block 20.12 40 0 20 -1 1 units box
+region           zona3 block 19 21 9.4 10.6 -1 1 units box
+region           todas union 3 zona1 zona2 zona3
+
+create_box       1 todas
+create_atoms     1 region zona1
+set              atom * mass 70.0
+set              atom * diameter 0.6
+
+velocity         all create 1e25 4928459 dist gaussian                                #  dist gaussian
+comm_modify      vel yes                                                              # required for gran/hooke style
+
+pair_style       hybrid/overlay gran/hooke 0 0 0 240000 0 0 social 0.08 3.5           # k=240000 kappa=0.08 cut_off=3.5                     
+pair_coeff       * * social 2000 3.5 0.3                                              # ntype ntype a_one=2000 cut_off=3.5 rad=0.3 
+pair_coeff       * * gran/hooke
+
+#  boundary conditions
+
+fix walls all wall/region todas social 2000 0.08 3.5
+fix wallg all wall/region todas granular 240000 1 0.001                               # k=240000 unused=1 rad=0.001
+fix target all social/self 70 4 xyz                                                   # mass=70 vd=4 point=in (x,y,z)
+
+# visualize
+
+dump        3 all movie 5 inmovie.mpg type type &
+            axes yes 0.8 0.02 view 0 0 adiam 0.6
+
+#dump        2 all image 100 inimage*.jpg type type &
+#            axes yes 0.8 0.02 view 0 0
+
+# run the process
+
+atom_modify   sort 0 0.0
+timestep      0.0005
+fix           1 all nve
+thermo        100
+run           10000
+

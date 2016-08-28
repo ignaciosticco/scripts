@@ -1,0 +1,110 @@
+# Pedestrians in a 2D box
+
+
+variable imax equal 15
+variable i loop 15 ${imax}
+label start_of_loop1
+print "ITERATION i = $i"		#Loop de velocidad de deseo
+
+variable jmax equal 30
+variable j loop 1 ${jmax}
+label start_of_loop2
+print "ITERATION j = $j"		# Loop de iteracion
+
+# 		 intial conditions
+
+dimension        2
+boundary         f f p
+
+units            si
+atom_style       sphere
+
+lattice          sq 1.3 origin 0.5 0.5 0.0
+region           zona1 block 0 20 5 15.5 -1 1 units box
+region           zona2 block 20.12 40 0 20 -1 1 units box
+region           zona3 block 19 21 9.4 10.6 -1 1 units box
+region           todas union 3 zona1 zona2 zona3
+
+
+create_box       1 todas
+create_atoms     1 region zona1
+set              atom * mass 70.0
+set              atom * diameter 0.6
+
+velocity         all create 1e23 $j dist gaussian
+comm_modify      vel yes
+
+pair_style       hybrid/overlay gran/social 0 0 0 240000 0 1 social 0.08 3.5
+pair_coeff       * * social 2000 3.5 0.3
+pair_coeff       * * gran/social
+
+#compute     ps all social_pressure/atom
+#dump        presion all custom 500 in_press_225p_v4_onedoor.txt c_ps x y
+#dump_modify presion append  yes
+
+#  boundary conditions
+
+variable 		k equal ($i/4)+0.5
+
+fix walls all wall/region todas social 2000 0.08 3.5
+fix wallg all wall/region todas granular 240000 120000 0.001      # k=240000 unused=1 rad=0.001
+fix target all social/self 70 $k xy                               # mass=70 vd=4 point=in (x,y,z)
+
+
+compute 		1 all property/atom x
+compute 		2 all reduce sum c_1
+variable  		b atom c_1>20.0
+compute 		mycompute all reduce sum v_b
+variable 		s equal c_mycompute
+#variable        ps atom c_ps
+
+# visualize
+
+#dump        3 all movie 200 in.movie.mpg type type &
+#            axes yes 0.8 0.02 view 0 0 zoom 2 adiam 0.6
+
+
+
+# run the process
+
+atom_modify   sort 0 0.0
+timestep      0.0001
+fix           1 all nve/limit 0.001
+#thermo         500
+thermo_style	custom step c_mycompute
+
+#	ESTE ES EL LOOP DE UN PROCESO
+
+variable nmax equal 20000
+variable n loop ${nmax}
+label start_of_loop3
+
+run           500
+if "$s > 100" then "jump SELF break"
+
+
+variable t equal 0.05*$n
+
+next n
+
+jump SELF start_of_loop3
+
+
+#	TERMINACION DEL PROCESO
+
+label break
+
+print "$k  $j  $t" append in.print_120p_v4_onedoor.txt
+
+
+clear
+variable n delete
+next j
+jump SELF start_of_loop2
+#	TERMINACION DEL LOOP 2
+
+
+
+clear
+next i
+jump SELF start_of_loop1

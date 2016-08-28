@@ -1,0 +1,13 @@
+#!/bin/sh
+
+cp /home/gfrank/job_sticco/lammps/in.example11 /home/gfrank/lammps-10Aug15/src/
+
+cd /home/gfrank/lammps-10Aug15/src
+
+./lmp_serial -i ./in.example11 -screen none
+
+mv in_print_v4.txt /home/gfrank/job_sticco/lammps/
+
+rm in.example11
+
+cd /home/gfrank/job_sticco/lammps

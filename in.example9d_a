@@ -1,0 +1,139 @@
+# Pedestrians in a 2D box with two doors
+
+
+variable mmax equal 31
+variable m loop 31 ${mmax}
+label start_of_loop4			#Loop de gap
+
+
+variable imax equal 15
+variable i loop 15 ${imax}
+label start_of_loop1
+print "ITERATION i = $i"		#Loop de velocidad de deseo
+
+variable jmax equal 30
+variable j loop 24 ${jmax}
+label start_of_loop2
+print "ITERATION j = $j"		# Loop de corrida
+
+# INITIAL CONDITIONS
+
+# room: 40x40 meters with 961 individuals 
+# doors:2 doors of 1.2 meters width (each)
+
+dimension        2
+boundary         f f p
+
+units            si
+atom_style       sphere
+
+variable		 g equal ($m*0.5)-0.5
+variable		 gd1 equal 20+($g/2)
+variable 		 gu1 equal 21.2+($g/2)
+variable 		 gu2 equal 20-($g/2)
+variable 		 gd2 equal 18.8-($g/2)
+
+
+lattice          sq 1.3 origin 0.5 0.5 0.0
+region           zona1 block 0     40 0   40   -1 1 units box
+region           zona2 block 40.12 80 0   40   -1 1 units box
+region           zona3 block 39    41 ${gd1}  ${gu1} -1 1 units box
+region           zona4 block 39    41 ${gd2}  ${gu2} -1 1 units box
+region           todas union 4 zona1 zona2 zona3 zona4
+
+
+create_box       1 todas
+create_atoms     1 region zona1
+set              atom * mass 70.0
+set              atom * diameter 0.6
+
+velocity         all create 1e23 $j dist gaussian   		# gaussian distribution
+comm_modify      vel yes                                        # required for gran/social style
+
+# the interacting forces follow:
+
+# k=240000 (coef. for the tangential force)
+# A=2000   (coef. for the social repulsion)
+# B=0.08   (coef. for the social repulsion)
+# rc=3.5   (cut-off distance for the social repulsion)
+# ri=0.3   (pedestrians radious)
+
+pair_style       hybrid/overlay gran/social 0 0 0 240000 0 1 social 0.08 3.5          
+pair_coeff       * * social 2000 3.5 0.3                                           
+pair_coeff       * * gran/social
+
+
+# BOUNDARY CONDITIONS
+
+variable 		k equal ($i/4)+0.25
+
+fix walls all wall/region todas social 2000 0.08 3.5
+fix wallg all wall/region todas granular 240000 120000 0.001      # k=240000 unused=1 rad=0.001
+#fix target all social/self/multid 70 $k 2 xy                      # mass=70 vd=4 point=in (x,y,z)
+fix target all social/self/multid 70 $k $g xy
+
+compute 		1 all property/atom x                     # get the atoms x-coordinate
+variable  		b atom c_1>40.0                           # check for atoms out of the room
+compute 		mycompute all reduce sum v_b              # count for atoms outside the room
+variable 		s equal c_mycompute                       # 's' is needed for stopping the process (see bellow)
+
+
+# VISUALIZATION (OPTIONAL)
+
+#dump        3 all movie 200 in_movied_v$k_g$g.mpg type type &
+#            axes yes 0.8 0.02 view 0 0 zoom 2 adiam 0.6
+
+#dump        2 all image 200 inimage_v$i_s$j.jpg type type &
+#            axes yes 0.8 0.02 view 0 0
+
+
+# RUN THE PROCESS
+
+atom_modify   sort 0 0.0
+timestep      0.0001
+fix           1 all nve
+#thermo       500
+thermo_style  custom step c_mycompute	                         #  show the number of individuals outside de room (dont forget the"step" option)
+
+# ESTE ES EL LOOP DE UN PROCESO
+
+variable nmax equal 20000
+variable n loop ${nmax}
+label start_of_loop3
+	
+run           500 
+if "$s > 857" then "jump SELF break"
+
+
+variable t equal 0.05*$n
+
+if "$t>12000" then "jump SELF break"
+
+next n
+
+jump SELF start_of_loop3
+
+
+# TERMINACION DEL PROCESO
+
+label break
+
+print "$g   $k   $j   $t" append in_printd_a.txt
+
+
+
+clear
+variable n delete
+next j
+jump SELF start_of_loop2
+# TERMINACION DEL LOOP 2
+
+
+
+clear
+next i
+jump SELF start_of_loop1
+
+next m
+jump SELF start_of_loop4
+

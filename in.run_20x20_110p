@@ -1,0 +1,8 @@
+#!/bin/sh
+
+
+/home/gfrank/lammps-10Aug15/src/lmp_serial -i /home/gfrank/job_sticco/lammps/in.20x20_110 -screen none
+
+/home/gfrank/notify ignaciosticco@gmail.com terminacion in.20x20_110
+
+/home/gfrank/notify guillermo.frank@gmail.com terminacion in.20x20_110

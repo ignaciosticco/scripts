@@ -1,0 +1,43 @@
+# Pedestrians in a 2D box
+
+#  intial conditions
+
+dimension        2
+boundary         f f p
+
+units            si
+atom_style       sphere
+
+lattice          sq 1.1 origin 0.5 0.5 0.0
+region           zona1 block 0 20 0 20 -1 1 units box
+create_box       1 zona1
+create_atoms     1 region zona1
+set              atom * mass 70.0
+set              atom * diameter 0.6
+
+velocity        all create 1e24 4928459 dist gaussian      #  dist gaussian
+
+pair_style        social 0.08 3.5           # kappa=0.08 cut_off=3.5                     
+pair_coeff        * * 2000.0  3.5 0.3       # ntype ntype a_one=2000 cut_off=3.5 rad=0.3 
+
+#  boundary conditions
+
+fix wall1 all wall/social xlo 0  2000 0.08 3.5 units box
+fix wall2 all wall/social xhi 20 2000 0.08 3.5 units box
+fix wall3 all wall/social ylo 0  2000 0.08 3.5 units box
+fix wall4 all wall/social yhi 20 2000 0.08 3.5 units box
+
+
+# visualize
+
+dump        3 all movie 5 inmovie.mpg type type &
+            axes yes 0.8 0.02 view 0 0 adiam 0.6
+
+# run the process
+
+atom_modify   sort 0 0.0
+timestep      0.005
+fix           1 all nve
+thermo        100
+run           3000
+

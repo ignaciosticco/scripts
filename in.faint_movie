@@ -1,0 +1,153 @@
+# Pedestrians in a 2D box
+
+variable fmax equal 4
+variable f loop 4 ${fmax}
+label start_of_loop6
+print "ITERATION f = $f"		#Loop de coeff fuerza compresion
+
+variable imax equal 5
+variable i loop 5 ${imax}
+label start_of_loop1
+print "ITERATION i = $i"		#Loop de velocidad de deseo
+
+variable jmax equal 1
+variable j loop 1 ${jmax}
+label start_of_loop2
+print "ITERATION j = $j"		# Loop de iteraciones
+
+# 		 intial conditions
+
+dimension        2
+boundary         f f p
+
+units            si
+atom_style       sphere
+
+lattice          sq 1.3 origin 0.5 0.5 0.0
+region           zona1 block 0 20 0 20 -1 1 units box
+region           zona2 block 20.12 40 0 20 -1 1 units box
+region           zona3 block 19 21 9.4 10.6 -1 1 units box
+region           todas union 3 zona1 zona2 zona3
+
+
+create_box       1 todas
+create_atoms     1 region zona1
+set              atom * mass 70.0
+set              atom * diameter 0.6
+
+variable 		u equal 2.5e$f
+
+velocity         all create 1e23 $j dist gaussian   			#  dist gaussian
+comm_modify      vel yes                                        # required for gran/social style
+
+# kn=12000
+# kappa=240000
+
+pair_style       hybrid/overlay gran/social $u 0 0 240000 0 1 socialfaint 0.08 3.5          
+pair_coeff       * * socialfaint 2000 3.5 0.3                                           
+pair_coeff       * * gran/social
+
+
+#  boundary conditions
+
+variable 		k equal $i   
+
+fix walls all wall/region todas social 2000 0.08 3.5
+fix wallg all wall/region todas granular 240000 $u 0.001      # k=240000 unused=1 rad=0.001
+fix target all social/self 70 $k xy                               # mass=70 vd=k point=in (x,y,z)
+
+# COMPUTES
+
+compute 		1 all property/atom x
+compute 		2 all reduce sum c_1   
+variable  		b atom c_1>20.0 
+compute 		mycompute all reduce sum v_b
+variable 		s equal c_mycompute
+
+# 1st=xtarget;
+# 2do=ytarget;
+# 3rd=kn;
+# 4th=1 for reset, 0 non-reset;
+
+
+compute 		3 all compressionfaint/atom 20.6 10 $u 0
+compute         	4 all reduce sum c_3
+variable   		l atom c_3
+
+# CAMPOS
+
+dump 6 all noheader 50 dump.LAMMPS x y c_3
+#dump_modify 6 append yes
+
+#dump        6 all movie 50 movie_v$k_s$j_$u_social_pressure.mp4 c_3 type &
+#             axes no 0.8 0.02 view 0 0 zoom 2 adiam 0.6
+#dump_modify	 6 amap min max da 0.0 2 min 93404.9 green min max red
+
+#dump 6 all custom 50 kn_2.5e4.txt vx vy v_l
+
+#dump        3 all movie 100 in_press_map.mp4 v_presion type  &
+#            axes yes 0.8 0.02 view 0 0 zoom 2 adiam 0.6
+#dump_modify	 3 amap min 200 ca 0.0 3 min red 20 yellow max blue
+
+# run the process
+
+atom_modify     sort 0 0.0
+timestep        0.0001
+fix             1 all nve/limit 0.001
+#fix 5 all enforce2d
+#thermo         500
+thermo_style	custom step c_mycompute c_4 #  Tiene que haber un thermo antes, "Step" es necesario
+
+#	ESTE ES EL LOOP DE UN PROCESO
+
+variable nmax equal 200000
+variable n loop ${nmax}
+label start_of_loop3
+
+run           50
+
+variable                t equal 0.005*$n
+
+if "$s > 159" then "jump SELF break"
+if "$t > 200" then "jump SELF break"
+
+
+
+next n
+
+variable	g atom "c_3>=93405"
+group       dead variable g
+fix 		9 dead move linear 0 0 0
+
+
+jump SELF start_of_loop3
+
+
+#	TERMINACION DEL PROCESO
+
+label break
+
+variable 		h equal count(dead,todas)
+
+#print "$k  $j  $t $h" append faint.txt
+
+
+
+clear
+variable n delete
+next j
+jump SELF start_of_loop2
+#	TERMINACION DEL LOOP 2
+
+
+
+clear
+next i
+jump SELF start_of_loop1
+
+
+clear
+next f
+jump SELF start_of_loop6
+
+

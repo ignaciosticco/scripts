@@ -1,0 +1,25 @@
+#!/bin/sh
+#En este programa mandamos 4 programas serials concurrentes
+#SBATCH -n 4          # Number of cores 
+#SBATCH -t 12-00:00    # Runtime in D-HH:MM 
+#SBATCH --mem=1000    # Memory pool for all cores (see also --mem-per-cpu) 
+#SBATCH -o panico.out # File to which STDOUT will be written 
+#SBATCH -e panico.err # File to which STDERR will be written 
+
+cp /home/gfrank/job_sticco/lammps/in.example9_30x30 /home/gfrank/lammps-10Aug15/src/
+
+cd /home/gfrank/lammps-10Aug15/src
+
+mpirun -n 4 ./lmp_mpi -i ./in.example9_30x30 -screen none
+
+wait
+
+mv in_print_30x30.txt /home/gfrank/job_sticco/lammps/
+
+rm in.example9_30x30
+
+cd /home/gfrank/job_sticco/lammps
+
+/home/gfrank/notify guillermo.frank@gmail.com in_print_30x30.txt terminado
+
+/home/gfrank/notify ignaciosticco@gmail.com in_print_30x30.txt terminado

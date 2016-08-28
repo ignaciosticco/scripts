@@ -1,0 +1,127 @@
+# Lennard-Jones molecules in a 2D box
+# This is my first example
+
+# Personas: social
+# Pared: 	gran y LJ
+
+#  intial conditions
+
+dimension		2
+boundary   		p p p
+
+
+units			si
+atom_style 		sphere
+#neighbor		0.3 bin
+																		
+#lattice			sq 2 origin 0.5 0.5 0.0
+#region			zona1 block 0 20 0 20 -1 1 units box
+
+lattice			sq 2 origin 0.5 0.5 0.0
+region			zona1 block 0 8 0 8 -1 1 units box
+
+#region 			zona2 block 20 40 0 20 -1 1 units box
+#region 			tabique1 block 52 53 0 10 -1 1 units box side out
+#region 			bola sphere 15.0 15.0 0.0 5 side out
+
+
+
+#region 			junta union 2 zona1 zona2 #tabique1  
+  
+create_box		1 zona1
+
+
+
+create_atoms	1 region zona1
+set 			atom * mass 70.0
+#set 			atom 1 diameter 0.60
+
+velocity		all create 1e25  999087 units box dist gaussian 
+
+
+
+comm_modify 	vel yes
+
+
+#fix		            mywallsx all wall/gran 0 0 0 2400000 0 0 xplane  0.0 30.0
+#unfix				mywallsx
+
+
+#pair_style		social 0.08 3.5  # kappa ri+rj+2*3.5*kappa
+#pair_coeff		* * 2000.0  3.5 0.3 # ntype ntype a_one ri+rj+2*3.5*kappa RAD
+
+
+pair_style		hybrid/overlay gran/hooke 2.4e3 0 0 24000 0 1 social 0.08 0.5
+pair_coeff		1 1 gran/hooke  
+pair_coeff		1 1 social 2000.0  0.5 0.3
+
+
+
+#pair_style 	gran/hooke/history 1.0 0.0
+
+#pair_style		gran/hooke/history 200000.0 0.0 50.0 0.0 0.5 1
+
+#neighbor		0.3 bin
+#neigh_modify	every 20 delay 0 check no
+
+
+#variable 		a atom x
+
+
+#fix 				mywalls all wall/region tabique1 lj126 1 1.5 2.5
+#fix		            mywallsx all wall/gran 0 0 0 240000 0 0 xplane  0.0 30.0
+#fix		     	mywallsy all wall/gran 0 0 0 240000 0 0 yplane  0.0 30.0
+
+
+
+#unfix			1
+
+#variable		x equal 3
+#variable		y equal 0.0
+#fix 			1 all move variable NULL NULL NULL v_x NULL NULL
+
+
+
+#fix 			mywalls all wall/region junta lj126 1 1 2.5
+#fix 			hola all wall/region tabique1 lj126 1 1 2.5
+
+
+#fix 			hola2 all wall/region bola lj126 1 1 2.5
+
+#fix		     	mywalls2 all wall/gran 0 0 0 240000 0.5 0 xplane -10.0 10.0
+
+#fix 			mueve all move linear 0.0 4.0 0.0 
+
+
+fix				1 all nve
+#fix 			1 all nvt temp 3e25 3e25 1000
+#atom_modify		sort 0 0
+
+
+
+
+# boundary conditions
+
+
+# run the process
+
+
+timestep		0.001
+
+
+# visualize
+
+#dump		2 all image 50 image.*.jpg type type &
+#			axes yes 0.8 0.02 view 0 0
+
+dump		3 all movie 10 movie.mpg type type &
+			axes yes 0.8 0.02 view 0 0 subbox yes 0.01 adiam 0.6
+
+#dump 		mydump all custom 1 dumpejemplo x y vx vy fx fy 
+
+#dump 		mydump all custom 100 dump.myexample x y z
+
+
+thermo			500
+#thermo_modify 	lost ignore
+run				10000
